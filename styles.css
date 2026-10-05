@@ -19,19 +19,19 @@ body {
 }
 
 .header h1 {
-    color: #0369a1; /* A deeper, professional blue */
+    color: #0369a1;
     font-weight: 800;
     letter-spacing: -0.5px;
     text-align: center;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .options {
     display: flex;
     justify-content: center;
     align-items: center;
-    flex-wrap: wrap; /* Allows buttons to wrap on small screens */
-    gap: 1.5rem;     /* Cleaner spacing between buttons */
+    flex-wrap: wrap;
+    gap: 1.5rem;
     padding: 2rem;
 }
 
@@ -39,7 +39,7 @@ button {
     background-color: #0f172a;
     color: white;
     border: 2px solid #0f172a;
-    border-radius: 12px; /* Slightly more modern than full pills */
+    border-radius: 12px;
     padding: 1rem 2rem;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -52,10 +52,10 @@ button h2 {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem; /* Space between icon and text */
+    gap: 0.5rem;
 }
 
-/* Make sure the material icon inside the button is aligned nicely */
+
 button .material-symbols-outlined {
     font-size: 1.4rem;
 }
@@ -64,12 +64,12 @@ button:hover {
     color: #0f172a;
     background-color: white;
     border-color: #0f172a;
-    transform: translateY(-4px); /* Lift up animation */
+    transform: translateY(-4px);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 button:active {
-    transform: translateY(0); /* Click down effect */
+    transform: translateY(0);
 }
 
 .display {
