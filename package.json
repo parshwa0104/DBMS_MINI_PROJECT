@@ -1,0 +1,24 @@
+{
+  "dependencies": {
+    "express": "^5.2.1",
+    "nodemon": "^3.1.14"
+  },
+  "name": "miniproject_dbms",
+  "version": "1.0.0",
+  "description": "grant database system to keep track of researchers and grants given to them by institution",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/parshwa0104/DBMS_MINI_PROJECT.git"
+  },
+  "keywords": [],
+  "author": "PARSHWA NAHAR, JITESH LAKHANI",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/parshwa0104/DBMS_MINI_PROJECT/issues"
+  },
+  "homepage": "https://github.com/parshwa0104/DBMS_MINI_PROJECT#readme"
+}
