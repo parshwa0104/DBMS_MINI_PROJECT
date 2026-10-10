@@ -6,22 +6,22 @@ USE DBMS_PROJECT;
 DROP TABLE IF EXISTS DEPARTMENT;
 CREATE TABLE DEPARTMENT
 (
-    depatrtment_id INT PRIMARY KEY,
-    depatrtment_name VARCHAR(40) UNIQUE
+    department_id INT PRIMARY KEY,
+    department_name VARCHAR(40) UNIQUE
 );
 
 
 DROP TABLE IF EXISTS RESEARCHER;
 CREATE TABLE RESEARCHER
 (
-    reseacrher_id INT PRIMARY KEY,
-    reseacrher_name VARCHAR(40) UNIQUE,
-    depatrtment_id INT,
+    researcher_id INT PRIMARY KEY,
+    researcher_name VARCHAR(40) UNIQUE,
+    department_id INT,
 
-    FOREIGN KEY (depatrtment_id)
-    REFERENCES DEPARTMENT(depatrtment_id),
+    FOREIGN KEY (department_id)
+    REFERENCES DEPARTMENT(department_id),
 
-    reseacrher_designation VARCHAR(40)
+    researcher_designation VARCHAR(40)
 );
 
 
@@ -34,11 +34,11 @@ CREATE TABLE RESEARCH_PROJECT
     project_start_date DATE,
     project_end_date DATE,
 
-    reseacrher_id INT,
-    FOREIGN KEY (reseacrher_id)
-    REFERENCES RESEARCHER(reseacrher_id),
+    researcher_id INT,
+    FOREIGN KEY (researcher_id)
+    REFERENCES RESEARCHER(researcher_id),
 
-    project_status VARCHAR(20) 
+    project_status VARCHAR(20)
 );
 
 
@@ -68,7 +68,6 @@ CREATE TABLE GRANT_APPLICATION
     application_date DATE,
     requested_amount DECIMAL(12,2),
     grant_status VARCHAR(20)
-
 );
 
 
@@ -76,7 +75,7 @@ DROP TABLE IF EXISTS GRANTS;
 CREATE TABLE GRANTS
 (
     grant_id INT PRIMARY KEY,
-    
+
     application_id INT,
     FOREIGN KEY (application_id)
     REFERENCES GRANT_APPLICATION(application_id),
@@ -108,7 +107,7 @@ DROP TABLE IF EXISTS MILESTONE;
 CREATE TABLE MILESTONE
 (
     milestone_id INT PRIMARY KEY,
-    
+
     project_id INT,
     FOREIGN KEY (project_id)
     REFERENCES RESEARCH_PROJECT(project_id),
@@ -116,7 +115,6 @@ CREATE TABLE MILESTONE
     milestone_name VARCHAR(40),
     due_date DATE,
     milestone_status VARCHAR(20)
-
 );
 
 
@@ -137,8 +135,8 @@ VALUES
 (303, 'Green Energy Council',
  'grants@gec.example', 'https://gec.example');
 
--- 3. RESEACRHER
-INSERT INTO RESEACRHER
+-- 3. RESEARCHER
+INSERT INTO RESEARCHER
 VALUES
 (101, 'Aarav Sharma', 1, 'Assistant Professor'),
 (102, 'Neha Patel', 2, 'Associate Professor'),
@@ -192,7 +190,7 @@ USE DBMS_PROJECT;
 
 SELECT * FROM DEPARTMENT;
 SELECT * FROM FUNDING_AGENCY;
-SELECT * FROM RESEACRHER;
+SELECT * FROM RESEARCHER;
 SELECT * FROM RESEARCH_PROJECT;
 SELECT * FROM GRANT_APPLICATION;
 SELECT * FROM GRANTS;
