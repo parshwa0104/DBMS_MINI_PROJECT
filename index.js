@@ -177,7 +177,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <td><strong>#${g.grant_id}</strong></td>
                         <td>${g.application_id}</td>
                         <td>${g.project_title || `<span style="color:#94a3b8;">-</span>`}</td>
-                        <td>${g.reseacrher_name || `<span style="color:#94a3b8;">-</span>`}</td>
+                        <td>${g.researcher_name || g.reseacrher_name || `<span style="color:#94a3b8;">-</span>`}</td>
                         <td>${g.agency_name || `<span style="color:#94a3b8;">-</span>`}</td>
                         <td><strong>${formatCurrency(g.approved_amount)}</strong></td>
                         <td>${formatDate(g.approval_date)}</td>

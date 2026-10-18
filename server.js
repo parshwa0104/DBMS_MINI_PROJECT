@@ -76,12 +76,12 @@ app.get("/api/grants", async (req, res) => {
                 g.grant_status,
                 ga.project_id,
                 rp.project_title,
-                r.reseacrher_name,
+                r.researcher_name,
                 fa.agency_name
             FROM GRANTS g
             LEFT JOIN GRANT_APPLICATION ga ON g.application_id = ga.application_id
             LEFT JOIN RESEARCH_PROJECT rp ON ga.project_id = rp.project_id
-            LEFT JOIN RESEACRHER r ON rp.reseacrher_id = r.reseacrher_id
+            LEFT JOIN RESEARCHER r ON rp.researcher_id = r.researcher_id
             LEFT JOIN FUNDING_AGENCY fa ON ga.agency_id = fa.agency_id
         `;
         let params = [];
@@ -93,7 +93,7 @@ app.get("/api/grants", async (req, res) => {
                    OR CAST(g.application_id AS CHAR) LIKE ?
                    OR g.grant_status LIKE ?
                    OR rp.project_title LIKE ?
-                   OR r.reseacrher_name LIKE ?
+                   OR r.researcher_name LIKE ?
                    OR fa.agency_name LIKE ?
             `;
             params = [term, term, term, term, term, term];

@@ -2,21 +2,21 @@
 USE DBMS_PROJECT;
 
 -- 1. Insert Departments
-INSERT IGNORE INTO DEPARTMENT (depatrtment_id, depatrtment_name) VALUES
+INSERT IGNORE INTO DEPARTMENT (department_id, department_name) VALUES
 (1, 'Computer Science & Engineering'),
 (2, 'Electrical & Electronics Engineering'),
 (3, 'Mechanical Engineering'),
 (4, 'Biotechnology');
 
 -- 2. Insert Researchers
-INSERT IGNORE INTO RESEACRHER (reseacrher_id, reseacrher_name, depatrtment_id, reseacrher_designation) VALUES
+INSERT IGNORE INTO RESEARCHER (researcher_id, researcher_name, department_id, researcher_designation) VALUES
 (101, 'Dr. Alan Turing', 1, 'Professor & Lead Researcher'),
 (102, 'Dr. Ada Lovelace', 1, 'Associate Professor'),
 (103, 'Dr. Grace Hopper', 2, 'Senior Scientist'),
 (104, 'Dr. Claude Shannon', 2, 'Professor');
 
 -- 3. Insert Research Projects
-INSERT IGNORE INTO RESEARCH_PROJECT (project_id, project_title, project_description, project_start_date, project_end_date, reseacrher_id, project_status) VALUES
+INSERT IGNORE INTO RESEARCH_PROJECT (project_id, project_title, project_description, project_start_date, project_end_date, researcher_id, project_status) VALUES
 (201, 'Neural Network Optimization', 'Research on accelerating neural network inference on edge devices', '2025-01-15', '2026-12-31', 101, 'Active'),
 (202, 'Quantum Computing Architectures', 'Exploration of quantum error correction codes and algorithms', '2025-03-01', '2027-02-28', 102, 'Active'),
 (203, 'NextGen Compiler Systems', 'Autonomous verification and compiler optimization techniques', '2024-08-01', '2025-07-31', 103, 'Completed');
