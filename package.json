@@ -1,14 +1,18 @@
 {
   "dependencies": {
+    "dotenv": "^18.0.8",
     "express": "^5.2.1",
+    "mysql2": "^3.24.6",
     "nodemon": "^3.1.14"
   },
   "name": "miniproject_dbms",
   "version": "1.0.0",
   "description": "grant database system to keep track of researchers and grants given to them by institution",
-  "main": "index.js",
+  "main": "server.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "repository": {
     "type": "git",
