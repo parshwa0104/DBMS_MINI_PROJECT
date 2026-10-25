@@ -277,7 +277,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         </div>
 
                         <div class="form-group">
-                            <label for="approved_amount">Approved Amount ($) *</label>
+                            <label for="approved_amount">Approved Amount (₹) *</label>
                             <input type="number" step="0.01" id="approved_amount" class="form-control" placeholder="e.g. 75000.00" required min="0" />
                         </div>
 
