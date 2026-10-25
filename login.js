@@ -14,6 +14,29 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .catch(() => {});
 
+    // Check DB status on startup to alert if MySQL or USERS table is not ready
+    fetch("/api/status")
+        .then(res => res.json())
+        .then(data => {
+            if (!data.connected) {
+                alertDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <span class="material-symbols-outlined">warning</span>
+                        <div><strong>MySQL Notice:</strong> Database connection offline. Please ensure MySQL is running on port 3306.</div>
+                    </div>
+                `;
+            } else if (data.tablesReady === false) {
+                alertDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <span class="material-symbols-outlined">warning</span>
+                        <div><strong>Database Setup Required:</strong> The <code>USERS</code> table does not exist yet. Please run <code>db.sql</code> and <code>seed.sql</code> in MySQL to create the required tables and demo users.</div>
+                    </div>
+                `;
+            }
+        })
+        .catch(() => {});
+
+
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
         alertDiv.innerHTML = "";

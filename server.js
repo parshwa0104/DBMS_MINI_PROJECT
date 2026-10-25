@@ -56,6 +56,14 @@ async function checkDbConnection() {
         dbConnected = true;
         dbErrorMsg = "";
         console.log(`[DB] Successfully connected to MySQL database: ${process.env.DB_NAME || "DBMS_PROJECT"}`);
+        try {
+            await conn.query("SELECT 1 FROM USERS LIMIT 1");
+        } catch (tableErr) {
+            if (tableErr.code === "ER_NO_SUCH_TABLE") {
+                console.warn(`[DB WARNING] Table 'USERS' does not exist yet.`);
+                console.warn(`[DB WARNING] Please execute db.sql and seed.sql in MySQL to initialize users, triggers, and audit tables.`);
+            }
+        }
         conn.release();
     } catch (err) {
         dbConnected = false;
@@ -140,7 +148,19 @@ app.post("/api/login", async (req, res) => {
 
     } catch (err) {
         console.error("Login error:", err);
-        res.status(500).json({ success: false, error: "Server error during login." });
+        if (err.code === "ER_NO_SUCH_TABLE") {
+            return res.status(500).json({
+                success: false,
+                error: "Database table 'USERS' does not exist in MySQL. Please run db.sql and seed.sql in MySQL to initialize tables, triggers, and demo users."
+            });
+        }
+        if (err.code === "ECONNREFUSED") {
+            return res.status(500).json({
+                success: false,
+                error: "Cannot connect to MySQL server. Please ensure MySQL is running on port 3306."
+            });
+        }
+        res.status(500).json({ success: false, error: err.message || "Server error during login." });
     }
 });
 
@@ -171,11 +191,24 @@ app.get("/api/me", (req, res) => {
 app.get("/api/status", async (req, res) => {
     try {
         const conn = await pool.getConnection();
+        let usersTableExists = true;
+        try {
+            await conn.query("SELECT 1 FROM USERS LIMIT 1");
+        } catch (tblErr) {
+            if (tblErr.code === "ER_NO_SUCH_TABLE") usersTableExists = false;
+        }
         conn.release();
-        res.json({ connected: true, message: "Database connected successfully" });
+        res.json({
+            connected: true,
+            tablesReady: usersTableExists,
+            message: usersTableExists
+                ? "Database connected successfully"
+                : "Database connected, but 'USERS' table is missing. Please run db.sql and seed.sql in MySQL."
+        });
     } catch (err) {
         res.json({
             connected: false,
+            tablesReady: false,
             message: `MySQL not connected: ${err.message}. Check your MySQL server and .env settings.`,
         });
     }
