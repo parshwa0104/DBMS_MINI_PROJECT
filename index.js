@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function formatCurrency(amount) {
         return new Intl.NumberFormat("en-US", {
             style: "currency",
-            currency: "USD",
+            currency: "INR",
             minimumFractionDigits: 2,
         }).format(amount || 0);
     }
@@ -413,7 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         </div>
 
                         <div class="form-group">
-                            <label for="update_approved_amount">Approved Amount ($) *</label>
+                            <label for="update_approved_amount">Approved Amount (₹) *</label>
                             <input type="number" step="0.01" id="update_approved_amount" class="form-control" required min="0" />
                         </div>
 
