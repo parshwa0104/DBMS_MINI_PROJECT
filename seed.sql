@@ -74,3 +74,13 @@ INSERT INTO MILESTONE
 (702, 201, 'Performance Evaluation', '2026-11-30', 'Pending'),
 (703, 202, 'Architecture Design', '2026-12-15', 'In Progress'),
 (704, 203, 'Compiler Testing', '2025-06-30', 'Completed');
+
+-- 9. Users (passwords hashed with bcryptjs, 10 salt rounds)
+-- admin123 / researcher123 / faculty123
+INSERT IGNORE INTO USERS (username, password_hash, full_name, role, researcher_id, department_id) VALUES
+('admin',    '$2b$10$WnFLAbecex8FFy/P3RKmEeB7mMwQKKswazpY9uQMTpz2RLBMgFKQK', 'System Administrator',    'Admin',      NULL, NULL),
+('turing',   '$2b$10$9YtoihZJLIeTniJkLoXinOb87G3zlKLeWzRTe7DORTZ9kNZLpUBHG', 'Dr. Alan Turing',         'Researcher', 101,  1),
+('lovelace', '$2b$10$9YtoihZJLIeTniJkLoXinOb87G3zlKLeWzRTe7DORTZ9kNZLpUBHG', 'Dr. Ada Lovelace',        'Researcher', 102,  1),
+('hopper',   '$2b$10$9YtoihZJLIeTniJkLoXinOb87G3zlKLeWzRTe7DORTZ9kNZLpUBHG', 'Dr. Grace Hopper',        'Researcher', 103,  2),
+('dean_cse', '$2b$10$X7g1vm7ooFBWukFdnYC6L.PMLhhiBQ1gHkO6Q.GX9x3l2J/Dnc7O2', 'Prof. John von Neumann',  'Faculty',    NULL, 1),
+('dean_eee', '$2b$10$X7g1vm7ooFBWukFdnYC6L.PMLhhiBQ1gHkO6Q.GX9x3l2J/Dnc7O2', 'Prof. Nikola Tesla',      'Faculty',    NULL, 2);

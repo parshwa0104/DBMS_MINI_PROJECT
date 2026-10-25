@@ -5,8 +5,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnSearch = document.getElementById("option2");
     const btnUpdate = document.getElementById("option3");
     const btnDelete = document.getElementById("option4");
+    const btnAudit = document.getElementById("option5");
+    const userBar = document.getElementById("userBar");
+    const logoutBtn = document.getElementById("logoutBtn");
 
-    const navButtons = [btnInsert, btnSearch, btnUpdate, btnDelete];
+    let currentUser = null; // Will be populated after auth check
+
+    const navButtons = [btnInsert, btnSearch, btnUpdate, btnDelete, btnAudit];
 
     function setActiveButton(activeBtn) {
         navButtons.forEach(btn => btn.classList.remove("active"));
@@ -15,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Helper: format currency
     function formatCurrency(amount) {
-        return new Intl.NumberFormat("en-US", {
+        return new Intl.NumberFormat("en-IN", {
             style: "currency",
             currency: "INR",
             minimumFractionDigits: 2,
@@ -43,6 +48,11 @@ document.addEventListener("DOMContentLoaded", () => {
         return `<span class="badge ${badgeClass}">${status || "Unknown"}</span>`;
     }
 
+    // Helper: check if current user is admin
+    function isAdmin() {
+        return currentUser && currentUser.role === "Admin";
+    }
+
     // Check DB status on startup
     async function checkStatus() {
         try {
@@ -68,6 +78,60 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         return "";
     }
+
+    // ==========================================
+    // AUTH: Check login status and setup UI
+    // ==========================================
+    async function initAuth() {
+        try {
+            const res = await fetch("/api/me");
+            const data = await res.json();
+
+            if (!data.success) {
+                // Not logged in, redirect to login page
+                window.location.href = "/login.html";
+                return false;
+            }
+
+            currentUser = data.user;
+
+            // Show user bar
+            userBar.style.display = "flex";
+            document.getElementById("userFullName").textContent = currentUser.full_name;
+            const roleBadge = document.getElementById("userRoleBadge");
+            roleBadge.textContent = currentUser.role;
+            roleBadge.className = "role-badge role-" + currentUser.role.toLowerCase();
+
+            // Show/hide nav buttons based on role
+            if (isAdmin()) {
+                btnInsert.style.display = "";
+                btnUpdate.style.display = "";
+                btnDelete.style.display = "";
+                btnAudit.style.display = "";
+            } else {
+                // Researcher and Faculty: only search
+                btnInsert.style.display = "none";
+                btnUpdate.style.display = "none";
+                btnDelete.style.display = "none";
+                btnAudit.style.display = "none";
+            }
+
+            return true;
+
+        } catch (err) {
+            window.location.href = "/login.html";
+            return false;
+        }
+    }
+
+    // Logout handler
+    logoutBtn.addEventListener("click", async () => {
+        try {
+            await fetch("/api/logout", { method: "POST" });
+        } catch (_) {}
+        window.location.href = "/login.html";
+    });
+
 
     // ==========================================
     // 1. SEARCH / VIEW ALL GRANTS
@@ -165,7 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <th>Approved Amount</th>
                                 <th>Approval Date</th>
                                 <th>Status</th>
-                                <th style="text-align: center;">Actions</th>
+                                ${isAdmin() ? `<th style="text-align: center;">Actions</th>` : ""}
                             </tr>
                         </thead>
                         <tbody>
@@ -182,6 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <td><strong>${formatCurrency(g.approved_amount)}</strong></td>
                         <td>${formatDate(g.approval_date)}</td>
                         <td>${getStatusBadge(g.grant_status)}</td>
+                        ${isAdmin() ? `
                         <td style="text-align: center; white-space: nowrap;">
                             <button class="btn btn-secondary btn-sm edit-grant-btn" data-id="${g.grant_id}" title="Update Grant">
                                 <span class="material-symbols-outlined" style="font-size:1rem;">edit</span>
@@ -190,6 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <span class="material-symbols-outlined" style="font-size:1rem;">delete</span>
                             </button>
                         </td>
+                        ` : ""}
                     </tr>
                 `;
             });
@@ -205,13 +271,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
             tableContainer.innerHTML = html;
 
-            // Bind actions in rows
-            document.querySelectorAll(".edit-grant-btn").forEach(btn => {
-                btn.addEventListener("click", () => renderUpdateGrant(btn.getAttribute("data-id")));
-            });
-            document.querySelectorAll(".delete-grant-btn").forEach(btn => {
-                btn.addEventListener("click", () => renderDeleteGrant(btn.getAttribute("data-id")));
-            });
+            // Bind actions in rows (only for admin)
+            if (isAdmin()) {
+                document.querySelectorAll(".edit-grant-btn").forEach(btn => {
+                    btn.addEventListener("click", () => renderUpdateGrant(btn.getAttribute("data-id")));
+                });
+                document.querySelectorAll(".delete-grant-btn").forEach(btn => {
+                    btn.addEventListener("click", () => renderDeleteGrant(btn.getAttribute("data-id")));
+                });
+            }
 
         } catch (err) {
             document.getElementById("tableContainer").innerHTML = `
@@ -224,9 +292,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ==========================================
-    // 2. INSERT NEW GRANT
+    // 2. INSERT NEW GRANT (Admin only)
     // ==========================================
     async function renderInsertGrant() {
+        if (!isAdmin()) return renderSearchGrants();
         setActiveButton(btnInsert);
         const noticeHtml = await checkStatus();
 
@@ -238,7 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (appData.success && appData.data.length > 0) {
                 appData.data.forEach(app => {
                     const title = app.project_title ? ` (${app.project_title})` : "";
-                    appOptionsHtml += `<option value="${app.application_id}">App #${app.application_id}${title} - Req: $${Number(app.requested_amount).toLocaleString()}</option>`;
+                    appOptionsHtml += `<option value="${app.application_id}">App #${app.application_id}${title} - Req: ₹${Number(app.requested_amount).toLocaleString("en-IN")}</option>`;
                 });
             }
         } catch (_) {}
@@ -371,9 +440,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ==========================================
-    // 3. UPDATE EXISTING GRANT
+    // 3. UPDATE EXISTING GRANT (Admin only)
     // ==========================================
     async function renderUpdateGrant(prefillGrantId = null) {
+        if (!isAdmin()) return renderSearchGrants();
         setActiveButton(btnUpdate);
         const noticeHtml = await checkStatus();
 
@@ -552,9 +622,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ==========================================
-    // 4. DELETE EXISTING GRANT
+    // 4. DELETE EXISTING GRANT (Admin only)
     // ==========================================
     async function renderDeleteGrant(prefillGrantId = null) {
+        if (!isAdmin()) return renderSearchGrants();
         setActiveButton(btnDelete);
         const noticeHtml = await checkStatus();
 
@@ -651,13 +722,149 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ==========================================
+    // 5. VIEW AUDIT LOG (Admin only)
+    // ==========================================
+    async function renderAuditLog() {
+        if (!isAdmin()) return renderSearchGrants();
+        setActiveButton(btnAudit);
+        const noticeHtml = await checkStatus();
+
+        display.innerHTML = `
+            ${noticeHtml}
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="material-symbols-outlined">history</span> Audit Log
+                    </h2>
+                    <button class="btn btn-primary btn-sm" id="refreshAuditBtn">
+                        <span class="material-symbols-outlined" style="font-size:1.1rem;">refresh</span> Refresh
+                    </button>
+                </div>
+
+                <p style="margin-bottom: 1rem; font-size: 0.9rem; color: #64748b;">
+                    Showing the last 100 changes to the GRANTS table (auto-logged by database triggers).
+                </p>
+
+                <div id="auditContainer">
+                    <div class="empty-state">Loading audit log...</div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById("refreshAuditBtn").addEventListener("click", () => renderAuditLog());
+
+        try {
+            const res = await fetch("/api/audit-log");
+            const result = await res.json();
+            const container = document.getElementById("auditContainer");
+
+            if (!result.success) {
+                container.innerHTML = `
+                    <div class="alert alert-error">
+                        <span class="material-symbols-outlined">error</span>
+                        <span>${result.error || "Failed to load audit log."}</span>
+                    </div>
+                `;
+                return;
+            }
+
+            const logs = result.data || [];
+            if (logs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No audit entries yet.</p>
+                        <p style="font-size: 0.9rem; color: #64748b;">Audit entries are created automatically when grants are updated or deleted.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="table-responsive">
+                    <table class="grants-table">
+                        <thead>
+                            <tr>
+                                <th>Log ID</th>
+                                <th>Table</th>
+                                <th>Record ID</th>
+                                <th>Action</th>
+                                <th>Old Values</th>
+                                <th>New Values</th>
+                                <th>Changed At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            logs.forEach(log => {
+                const oldVals = log.old_values ? formatJsonCell(log.old_values) : "-";
+                const newVals = log.new_values ? formatJsonCell(log.new_values) : "-";
+                const actionBadge = log.action === "DELETE"
+                    ? `<span class="badge badge-rejected">${log.action}</span>`
+                    : `<span class="badge badge-pending">${log.action}</span>`;
+
+                html += `
+                    <tr>
+                        <td><strong>#${log.log_id}</strong></td>
+                        <td>${log.table_name}</td>
+                        <td>${log.record_id}</td>
+                        <td>${actionBadge}</td>
+                        <td style="font-size: 0.8rem; max-width: 250px; word-break: break-all;">${oldVals}</td>
+                        <td style="font-size: 0.8rem; max-width: 250px; word-break: break-all;">${newVals}</td>
+                        <td>${formatDate(log.changed_at)}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 1rem; font-size: 0.85rem; color: #64748b; text-align: right;">
+                    Total entries: <strong>${logs.length}</strong>
+                </div>
+            `;
+
+            container.innerHTML = html;
+
+        } catch (err) {
+            document.getElementById("auditContainer").innerHTML = `
+                <div class="alert alert-error">
+                    <span class="material-symbols-outlined">error</span>
+                    <span>Error connecting to server: ${err.message}</span>
+                </div>
+            `;
+        }
+    }
+
+    // Helper: format JSON object for audit log display
+    function formatJsonCell(data) {
+        if (typeof data === "string") {
+            try { data = JSON.parse(data); } catch (_) { return data; }
+        }
+        if (!data || typeof data !== "object") return "-";
+
+        return Object.entries(data)
+            .map(([k, v]) => `<strong>${k}:</strong> ${v}`)
+            .join("<br>");
+    }
+
+
+    // ==========================================
     // Attach top navigation button events
     // ==========================================
     btnInsert.addEventListener("click", () => renderInsertGrant());
     btnSearch.addEventListener("click", () => renderSearchGrants());
     btnUpdate.addEventListener("click", () => renderUpdateGrant());
     btnDelete.addEventListener("click", () => renderDeleteGrant());
+    btnAudit.addEventListener("click", () => renderAuditLog());
 
-    // Default view: Search / View Table
-    renderSearchGrants();
+    // ==========================================
+    // INIT: Auth check then load default view
+    // ==========================================
+    initAuth().then(authenticated => {
+        if (authenticated) {
+            renderSearchGrants();
+        }
+    });
 });

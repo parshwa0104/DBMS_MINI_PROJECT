@@ -9,10 +9,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- User Info Bar -->
+    <div class="user-bar" id="userBar" style="display: none;">
+        <div class="user-info">
+            <span class="material-symbols-outlined" style="font-size: 1.3rem;">account_circle</span>
+            <span id="userFullName">User</span>
+            <span class="role-badge" id="userRoleBadge">Role</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="logoutBtn">
+            <span class="material-symbols-outlined" style="font-size: 1rem;">logout</span> Logout
+        </button>
+    </div>
+
     <div class="header"> 
         <h1>RESEARCH GRANT MANAGEMENT SYSTEM</h1>
     </div>
-    <div class="options">
+    <div class="options" id="navOptions">
         <button id="option1"> 
             <h2><span class="material-symbols-outlined">add</span>INSERT NEW GRANT</h2>
         </button>
@@ -24,6 +36,9 @@
         </button>
         <button id = "option4">
             <h2><span class="material-symbols-outlined">delete</span>DELETE EXISTING GRANT</h2>
+        </button>
+        <button id="option5" style="display: none;">
+            <h2><span class="material-symbols-outlined">history</span>VIEW AUDIT LOG</h2>
         </button>
     </div>
     

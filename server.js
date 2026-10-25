@@ -4,6 +4,8 @@ import mysql from "mysql2/promise";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import session from "express-session";
+import bcrypt from "bcryptjs";
 
 dotenv.config();
 
@@ -16,6 +18,20 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Session middleware (must be before routes)
+app.use(session({
+    secret: process.env.SESSION_SECRET || "dbms-project-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false,
+        httpOnly: true,
+        maxAge: 1000 * 60 * 60 * 24 // 1 day
+    }
+}));
+
+// Serve static files
 app.use(express.static(__dirname));
 
 // MySQL Connection Pool
@@ -50,7 +66,108 @@ async function checkDbConnection() {
 }
 checkDbConnection();
 
-// Health/status endpoint
+
+// ============================================
+// AUTH MIDDLEWARE
+// ============================================
+
+// Check if user is logged in
+function requireAuth(req, res, next) {
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, error: "Not authenticated. Please log in." });
+    }
+    next();
+}
+
+// Check if user has one of the required roles
+function requireRole(...roles) {
+    return (req, res, next) => {
+        if (!req.session.user) {
+            return res.status(401).json({ success: false, error: "Not authenticated. Please log in." });
+        }
+        if (!roles.includes(req.session.user.role)) {
+            return res.status(403).json({ success: false, error: "Insufficient permissions for this action." });
+        }
+        next();
+    };
+}
+
+
+// ============================================
+// AUTH ROUTES
+// ============================================
+
+// POST /api/login
+app.post("/api/login", async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ success: false, error: "Username and password are required." });
+        }
+
+        const [rows] = await pool.query(
+            "SELECT * FROM USERS WHERE username = ?",
+            [username]
+        );
+
+        if (rows.length === 0) {
+            return res.status(401).json({ success: false, error: "Invalid username or password." });
+        }
+
+        const user = rows[0];
+        const isValid = await bcrypt.compare(password, user.password_hash);
+
+        if (!isValid) {
+            return res.status(401).json({ success: false, error: "Invalid username or password." });
+        }
+
+        // Store user info in session (exclude password_hash)
+        req.session.user = {
+            user_id: user.user_id,
+            username: user.username,
+            full_name: user.full_name,
+            role: user.role,
+            researcher_id: user.researcher_id,
+            department_id: user.department_id,
+        };
+
+        res.json({
+            success: true,
+            message: `Welcome, ${user.full_name}!`,
+            user: req.session.user,
+        });
+
+    } catch (err) {
+        console.error("Login error:", err);
+        res.status(500).json({ success: false, error: "Server error during login." });
+    }
+});
+
+// POST /api/logout
+app.post("/api/logout", (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ success: false, error: "Could not log out." });
+        }
+        res.clearCookie("connect.sid");
+        res.json({ success: true, message: "Logged out successfully." });
+    });
+});
+
+// GET /api/me — get current logged-in user info
+app.get("/api/me", (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, error: "Not authenticated." });
+    }
+    res.json({ success: true, user: req.session.user });
+});
+
+
+// ============================================
+// HEALTH / STATUS
+// ============================================
+
 app.get("/api/status", async (req, res) => {
     try {
         const conn = await pool.getConnection();
@@ -64,9 +181,16 @@ app.get("/api/status", async (req, res) => {
     }
 });
 
+
+// ============================================
+// GRANT ROUTES (with auth guards)
+// ============================================
+
 // GET all grants or search
-app.get("/api/grants", async (req, res) => {
+app.get("/api/grants", requireAuth, async (req, res) => {
     const { search } = req.query;
+    const user = req.session.user;
+
     try {
         let query = `
             SELECT 
@@ -78,6 +202,8 @@ app.get("/api/grants", async (req, res) => {
                 ga.project_id,
                 rp.project_title,
                 r.researcher_name,
+                r.researcher_id,
+                r.department_id AS researcher_dept_id,
                 fa.agency_name
             FROM GRANTS g
             LEFT JOIN GRANT_APPLICATION ga ON g.application_id = ga.application_id
@@ -85,19 +211,34 @@ app.get("/api/grants", async (req, res) => {
             LEFT JOIN RESEARCHER r ON rp.researcher_id = r.researcher_id
             LEFT JOIN FUNDING_AGENCY fa ON ga.agency_id = fa.agency_id
         `;
+        let conditions = [];
         let params = [];
+
+        // Role-based filtering
+        if (user.role === "Researcher" && user.researcher_id) {
+            conditions.push("r.researcher_id = ?");
+            params.push(user.researcher_id);
+        } else if (user.role === "Faculty" && user.department_id) {
+            conditions.push("r.department_id = ?");
+            params.push(user.department_id);
+        }
 
         if (search && search.trim() !== "") {
             const term = `%${search.trim()}%`;
-            query += `
-                WHERE CAST(g.grant_id AS CHAR) LIKE ?
-                   OR CAST(g.application_id AS CHAR) LIKE ?
-                   OR g.grant_status LIKE ?
-                   OR rp.project_title LIKE ?
-                   OR r.researcher_name LIKE ?
-                   OR fa.agency_name LIKE ?
-            `;
-            params = [term, term, term, term, term, term];
+            const searchCondition = `(
+                CAST(g.grant_id AS CHAR) LIKE ?
+                OR CAST(g.application_id AS CHAR) LIKE ?
+                OR g.grant_status LIKE ?
+                OR rp.project_title LIKE ?
+                OR r.researcher_name LIKE ?
+                OR fa.agency_name LIKE ?
+            )`;
+            conditions.push(searchCondition);
+            params.push(term, term, term, term, term, term);
+        }
+
+        if (conditions.length > 0) {
+            query += " WHERE " + conditions.join(" AND ");
         }
 
         query += ` ORDER BY g.grant_id DESC`;
@@ -125,7 +266,7 @@ app.get("/api/grants", async (req, res) => {
 });
 
 // GET a single grant by ID
-app.get("/api/grants/:id", async (req, res) => {
+app.get("/api/grants/:id", requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
         const [rows] = await pool.query("SELECT * FROM GRANTS WHERE grant_id = ?", [id]);
@@ -139,7 +280,7 @@ app.get("/api/grants/:id", async (req, res) => {
 });
 
 // GET available applications for dropdown/reference
-app.get("/api/applications", async (req, res) => {
+app.get("/api/applications", requireAuth, async (req, res) => {
     try {
         const [rows] = await pool.query(`
             SELECT 
@@ -159,8 +300,8 @@ app.get("/api/applications", async (req, res) => {
     }
 });
 
-// POST insert new grant
-app.post("/api/grants", async (req, res) => {
+// POST insert new grant — Admin only
+app.post("/api/grants", requireRole("Admin"), async (req, res) => {
     try {
         const { grant_id, application_id, approved_amount, approval_date, grant_status } = req.body;
 
@@ -191,8 +332,8 @@ app.post("/api/grants", async (req, res) => {
     }
 });
 
-// PUT update existing grant
-app.put("/api/grants/:id", async (req, res) => {
+// PUT update existing grant — Admin only
+app.put("/api/grants/:id", requireRole("Admin"), async (req, res) => {
     try {
         const { id } = req.params;
         const { application_id, approved_amount, approval_date, grant_status } = req.body;
@@ -223,8 +364,8 @@ app.put("/api/grants/:id", async (req, res) => {
     }
 });
 
-// DELETE grant
-app.delete("/api/grants/:id", async (req, res) => {
+// DELETE grant — Admin only
+app.delete("/api/grants/:id", requireRole("Admin"), async (req, res) => {
     try {
         const { id } = req.params;
         const [result] = await pool.query("DELETE FROM GRANTS WHERE grant_id = ?", [Number(id)]);
@@ -244,9 +385,35 @@ app.delete("/api/grants/:id", async (req, res) => {
     }
 });
 
-// Default route
+
+// ============================================
+// AUDIT LOG ROUTE — Admin only
+// ============================================
+
+app.get("/api/audit-log", requireRole("Admin"), async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            "SELECT * FROM AUDIT_LOG ORDER BY changed_at DESC LIMIT 100"
+        );
+        res.json({ success: true, data: rows });
+    } catch (err) {
+        console.error("Error fetching audit log:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+
+// ============================================
+// PAGE ROUTING
+// ============================================
+
+// Default route — serve login or main page based on session
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "index.html"));
+    if (req.session.user) {
+        res.sendFile(path.join(__dirname, "index.html"));
+    } else {
+        res.sendFile(path.join(__dirname, "login.html"));
+    }
 });
 
 app.listen(PORT, () => {
