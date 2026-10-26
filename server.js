@@ -114,10 +114,15 @@ app.post("/api/login", async (req, res) => {
             return res.status(400).json({ success: false, error: "Username and password are required." });
         }
 
-        const [rows] = await pool.query(
-            "SELECT * FROM USERS WHERE username = ?",
-            [username]
-        );
+        const [rows] = await pool.query(`
+            SELECT 
+                u.*, 
+                d.department_name 
+            FROM USERS u
+            LEFT JOIN RESEARCHER r ON u.researcher_id = r.researcher_id
+            LEFT JOIN DEPARTMENT d ON COALESCE(u.department_id, r.department_id) = d.department_id
+            WHERE u.username = ?
+        `, [username]);
 
         if (rows.length === 0) {
             return res.status(401).json({ success: false, error: "Invalid username or password." });
@@ -138,6 +143,7 @@ app.post("/api/login", async (req, res) => {
             role: user.role,
             researcher_id: user.researcher_id,
             department_id: user.department_id,
+            department_name: user.department_name || null,
         };
 
         res.json({
@@ -176,10 +182,24 @@ app.post("/api/logout", (req, res) => {
 });
 
 // GET /api/me — get current logged-in user info
-app.get("/api/me", (req, res) => {
+app.get("/api/me", async (req, res) => {
     if (!req.session.user) {
         return res.status(401).json({ success: false, error: "Not authenticated." });
     }
+
+    // Refresh department_name if missing in existing session
+    if (!req.session.user.department_name && req.session.user.department_id) {
+        try {
+            const [depts] = await pool.query(
+                "SELECT department_name FROM DEPARTMENT WHERE department_id = ?",
+                [req.session.user.department_id]
+            );
+            if (depts.length > 0) {
+                req.session.user.department_name = depts[0].department_name;
+            }
+        } catch (_) {}
+    }
+
     res.json({ success: true, user: req.session.user });
 });
 
@@ -237,11 +257,13 @@ app.get("/api/grants", requireAuth, async (req, res) => {
                 r.researcher_name,
                 r.researcher_id,
                 r.department_id AS researcher_dept_id,
+                d.department_name,
                 fa.agency_name
             FROM GRANTS g
             LEFT JOIN GRANT_APPLICATION ga ON g.application_id = ga.application_id
             LEFT JOIN RESEARCH_PROJECT rp ON ga.project_id = rp.project_id
             LEFT JOIN RESEARCHER r ON rp.researcher_id = r.researcher_id
+            LEFT JOIN DEPARTMENT d ON r.department_id = d.department_id
             LEFT JOIN FUNDING_AGENCY fa ON ga.agency_id = fa.agency_id
         `;
         let conditions = [];
@@ -264,10 +286,11 @@ app.get("/api/grants", requireAuth, async (req, res) => {
                 OR g.grant_status LIKE ?
                 OR rp.project_title LIKE ?
                 OR r.researcher_name LIKE ?
+                OR d.department_name LIKE ?
                 OR fa.agency_name LIKE ?
             )`;
             conditions.push(searchCondition);
-            params.push(term, term, term, term, term, term);
+            params.push(term, term, term, term, term, term, term);
         }
 
         if (conditions.length > 0) {

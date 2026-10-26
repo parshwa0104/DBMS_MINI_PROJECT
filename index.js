@@ -102,6 +102,16 @@ document.addEventListener("DOMContentLoaded", () => {
             roleBadge.textContent = currentUser.role;
             roleBadge.className = "role-badge role-" + currentUser.role.toLowerCase();
 
+            // Show department badge if assigned
+            const deptBadge = document.getElementById("userDeptBadge");
+            const deptName = document.getElementById("userDeptName");
+            if (currentUser.department_name && deptBadge && deptName) {
+                deptName.textContent = currentUser.department_name;
+                deptBadge.style.display = "inline-flex";
+            } else if (deptBadge) {
+                deptBadge.style.display = "none";
+            }
+
             // Show/hide nav buttons based on role
             if (isAdmin()) {
                 btnInsert.style.display = "";
@@ -140,8 +150,30 @@ document.addEventListener("DOMContentLoaded", () => {
         setActiveButton(btnSearch);
         const noticeHtml = await checkStatus();
 
+        let scopeNotice = "";
+        if (currentUser && currentUser.role === "Faculty" && currentUser.department_name) {
+            scopeNotice = `
+                <div class="scope-banner">
+                    <span class="material-symbols-outlined" style="font-size: 1.35rem; color: #047857;">domain</span>
+                    <div>
+                        <strong>Faculty Department View:</strong> Showing grants for <strong>${currentUser.department_name}</strong>
+                    </div>
+                </div>
+            `;
+        } else if (currentUser && currentUser.role === "Researcher" && currentUser.department_name) {
+            scopeNotice = `
+                <div class="scope-banner">
+                    <span class="material-symbols-outlined" style="font-size: 1.35rem; color: #0369a1;">person</span>
+                    <div>
+                        <strong>Researcher View:</strong> Showing your personal grants (Department: <strong>${currentUser.department_name}</strong>)
+                    </div>
+                </div>
+            `;
+        }
+
         display.innerHTML = `
             ${noticeHtml}
+            ${scopeNotice}
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">
@@ -157,7 +189,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         type="text" 
                         id="grantSearchInput" 
                         class="search-input" 
-                        placeholder="Search by Grant ID, Application ID, Status, Project, or Researcher..." 
+                        placeholder="Search by Grant ID, Application ID, Status, Project, Researcher, or Department..." 
                         value="${searchTerm}"
                     />
                     <button class="btn btn-primary" id="doSearchBtn">Search</button>
@@ -225,6 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <th>App ID</th>
                                 <th>Project / Title</th>
                                 <th>Researcher</th>
+                                <th>Department</th>
                                 <th>Agency</th>
                                 <th>Approved Amount</th>
                                 <th>Approval Date</th>
@@ -242,6 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <td>${g.application_id}</td>
                         <td>${g.project_title || `<span style="color:#94a3b8;">-</span>`}</td>
                         <td>${g.researcher_name || g.reseacrher_name || `<span style="color:#94a3b8;">-</span>`}</td>
+                        <td>${g.department_name ? `<span class="dept-tag">${g.department_name}</span>` : `<span style="color:#94a3b8;">-</span>`}</td>
                         <td>${g.agency_name || `<span style="color:#94a3b8;">-</span>`}</td>
                         <td><strong>${formatCurrency(g.approved_amount)}</strong></td>
                         <td>${formatDate(g.approval_date)}</td>
